@@ -19,13 +19,15 @@ int in3 = 10;
 int in4 = 12;
 
 int direction_button = 3;
-int print_button = 2;
+int print_button = A2;
 
 float distance_front;
 float distance_back;
-bool reverse=false;
-volatile bool print_reqouest=false;
-
+volatile bool reverse=false;
+volatile unsigned long dirbutton = 0;
+String state_car;
+float velocity;
+int rpm;
 float ultra(int trig,int echo) {
   digitalWrite(trig, LOW);
   delayMicroseconds(2);
@@ -69,6 +71,32 @@ void stop(int mapped_speed){
   digitalWrite(in3, HIGH);
   digitalWrite(in4, HIGH);
 }
+void printbutton(){
+
+    lcd.setCursor(4, 0);
+  lcd.print("velocity");
+      lcd.setCursor(6, 1);
+  lcd.print(velocity);
+  delay(1500);
+  lcd.clear();
+    lcd.setCursor(4, 0);
+ lcd.print("car state");
+ lcd.setCursor(4, 1);
+ lcd.print(state_car);
+ delay(1500);
+ lcd.clear();
+  lcd.setCursor(7, 0);
+ lcd.print("RPM");
+ lcd.setCursor(7, 1);
+ lcd.print(rpm);
+}
+void change_direction(){
+ unsigned long time = millis();
+ if(time -dirbutton > 250){
+    reverse =!reverse;
+    dirbutton = time;
+ }
+}
 void setup() {
   // put your setup code here, to run once:
  Serial.begin(9600);
@@ -88,21 +116,22 @@ void setup() {
   pinMode(in4, OUTPUT);
   pinMode(direction_button, INPUT_PULLUP);
   pinMode(print_button, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(direction_button), onInterrupt, FALLING);
+  attachInterrupt(digitalPinToInterrupt(direction_button), change_direction, FALLING);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  if(digitalRead(print_button)==LOW){
+      printbutton();
 
-
+  }
 int pot_speed_reading = analogRead(pot_speed);
 int mapped_speed = map(pot_speed_reading ,0,1023 ,0,255);
 analogWrite(ENA1,mapped_speed);
 analogWrite(ENA2,mapped_speed);
-int rpm=map(pot_speed_reading,0,1023 ,0,600);
+rpm=map(pot_speed_reading,0,1023 ,0,600);
   
-float velocity=2*3.14*3.25*(rpm/60.0);
-lcd.clear();
+velocity=2*3.14*3.25*(rpm/60.0);
   distance_front= ultra(trigfront,echofront);
   distance_back= ultra(trigback,echoback);
 
@@ -110,86 +139,21 @@ int pot_direction_reading= analogRead(pot_direction);
 int servo_angle = map(pot_direction_reading,0,1023 ,0,180);
 ourservo.write(servo_angle);
 if(digitalRead(direction_button)==LOW){
-  
- reverse =!reverse;
-  delay(50);
+   reverse =!reverse;
  }
-if(distance_front<=30){
+
+if(distance_back <= 30||distance_front<=30){
   stop(mapped_speed);
-  delay(500);
-   String stop_moving = "stop";
-backward(mapped_speed);
-  delay(1000);
-   String move_backward = "backward";
-   forward(mapped_speed);
-      String move_forward = "forward";
+  state_car = "stop";
 }
-  else if(distance_back <= 30){
-   stop(mapped_speed);
-      String stop_moving;
-  forward(mapped_speed);
-  delay(500);
-      String move_forward = "forward";
-  backward(mapped_speed);
-     String move_backward ;
-  }
-if(reverse==false){
- forward(mapped_speed) ;
- String move_forward;
-}
-
 else{
- backward(mapped_speed);
-   String move_backward;
-}
-
-
-
-
-
-     if ( print_reqouest== true)
-{
-   print_reqouest= false;
-printbutton;
-}
-
-}
-
-
-
-void printbutton(float velocity,String move_forward,String move_backward,String stop_moving,int rpm){
-
- if (digitalRead(print_button) == LOW){
-    lcd.setCursor(4, 0);
-  lcd.print("velocity");
-      lcd.setCursor(4, 1);
-  lcd.print(velocity);
-  delay(2500);
-  lcd.clear();
-    lcd.setCursor(4, 0);
- lcd.print("car state");
-       lcd.setCursor(4, 1);
- lcd.print(stop_moving);
- lcd.print(move_backward);
- lcd.print(move_forward);
-delay(2500);
-  lcd.clear();
-      lcd.setCursor(7, 0);
-    lcd.setCursor(7, 1);
- lcd.print("rpm");
- lcd.print(rpm);
+  if(reverse == false){
+   forward(mapped_speed);
+     state_car = "forward";
+  }
+  else {
+   backward(mapped_speed);
+   state_car = "backward";
+  }
  }
 }
-void dirbutton(){
-           if(digitalRead(direction_button)==LOW){
- reverse !=reverse;
- }
-           }
-           
-
-
-           
-void printInterrupt(volatile bool print_reqouest)
-{
-  print_reqouest= true;
-} 
