@@ -143,16 +143,20 @@ Serial.println(digitalRead(direction_button));
 if (distance_front<=30){
       stop(mapped_speed);
   state_car = "stop";
+    delay(500);
   backward(mapped_speed);
     state_car = "backward";
+      delay(1000);
  forward(mapped_speed);
     state_car = "forward";
 }
-  if(distance_back <= 30){
+  else if(distance_back <= 30){
   stop(mapped_speed);
   state_car = "stop";
+    delay(500);
      forward(mapped_speed);
     state_car = "forward";
+      delay(1000);
     backward(mapped_speed);
     state_car = "backward";
 
