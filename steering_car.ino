@@ -18,17 +18,17 @@ int ENA2 = 5;
 int in3 = 10;
 int in4 = 12;
 
-int direction_button = 3;
+int direction_button = 2;
 int print_button = A2;
 
 float distance_front;
 float distance_back;
-volatile bool reverse=false;
-volatile unsigned long dirbutton = 0;
+volatile bool reverse = false;
 String state_car;
 float velocity;
 int rpm;
-float ultra(int trig,int echo) {
+
+float ultrasonic(int trig,int echo) {
   digitalWrite(trig, LOW);
   delayMicroseconds(2);
   digitalWrite(trig, HIGH);
@@ -38,6 +38,7 @@ float ultra(int trig,int echo) {
   float distance = (time * 0.0343) / 2;
   return distance;
 }
+
 void forward(int mapped_speed) {
   digitalWrite(in1, HIGH);
   digitalWrite(in2, LOW);
@@ -46,7 +47,6 @@ void forward(int mapped_speed) {
   for(int i=0; i<mapped_speed; i++){
   	analogWrite(ENA1, i);
     analogWrite(ENA2, i);
-    delay(20);
   }
 }
 void backward(int mapped_speed) {
@@ -57,45 +57,47 @@ void backward(int mapped_speed) {
   for(int i=0; i<mapped_speed; i++){
   	analogWrite(ENA1, i);
     analogWrite(ENA2, i);
-    delay(20);
   }
 }
 void stop(int mapped_speed){
   for(int i=mapped_speed; i>0; i--){
   	analogWrite(ENA1, i);
     analogWrite(ENA2, i);
-    delay(20);
   }
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, HIGH);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, HIGH);
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, LOW);
 }
 void printbutton(){
 
-    lcd.setCursor(4, 0);
+  lcd.setCursor(4, 0);
   lcd.print("velocity");
-      lcd.setCursor(6, 1);
+  lcd.setCursor(5, 1);
   lcd.print(velocity);
   delay(1500);
   lcd.clear();
-    lcd.setCursor(4, 0);
- lcd.print("car state");
- lcd.setCursor(4, 1);
- lcd.print(state_car);
- delay(1500);
- lcd.clear();
+  lcd.setCursor(4, 0);
+  lcd.print("car state");
+  lcd.setCursor(5, 1);
+  lcd.print(state_car);
+  delay(1500);
+  lcd.clear();
   lcd.setCursor(7, 0);
+  
  lcd.print("RPM");
  lcd.setCursor(7, 1);
  lcd.print(rpm);
+ delay(1500);
+  lcd.clear();
 }
 void change_direction(){
- unsigned long time = millis();
- if(time -dirbutton > 250){
-    reverse =!reverse;
-    dirbutton = time;
+ unsigned long now = millis();
+ static long lastint = 0;
+  if(now - lastint > 200){
+    reverse = !reverse;
  }
+ lastint = now;
 }
 void setup() {
   // put your setup code here, to run once:
@@ -103,6 +105,7 @@ void setup() {
  lcd.begin(16,2);
  lcd.init();
  lcd.backlight();
+ lcd.clear();
   ourservo.attach(servo);
   pinMode(echofront, INPUT);
   pinMode(echoback, INPUT);
@@ -122,34 +125,43 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   if(digitalRead(print_button)==LOW){
-      printbutton();
-
+    printbutton();
   }
-int pot_speed_reading = analogRead(pot_speed);
-int mapped_speed = map(pot_speed_reading ,0,1023 ,0,255);
-analogWrite(ENA1,mapped_speed);
-analogWrite(ENA2,mapped_speed);
-rpm=map(pot_speed_reading,0,1023 ,0,600);
-  
-velocity=2*3.14*3.25*(rpm/60.0);
-  distance_front= ultra(trigfront,echofront);
-  distance_back= ultra(trigback,echoback);
-
 int pot_direction_reading= analogRead(pot_direction);
 int servo_angle = map(pot_direction_reading,0,1023 ,0,180);
 ourservo.write(servo_angle);
-if(digitalRead(direction_button)==LOW){
-   reverse =!reverse;
- }
+int pot_speed_reading = analogRead(pot_speed);
+int mapped_speed = map(pot_speed_reading ,0,1023 ,0,255);
+rpm=map(pot_speed_reading,0,1023 ,0,600);
+  
+  velocity=2*3.14*3.25*(rpm/60.0);
+  distance_front= ultrasonic(trigfront,echofront);
+  distance_back= ultrasonic(trigback,echoback);
 
-if(distance_back <= 30||distance_front<=30){
+Serial.println(digitalRead(direction_button));
+
+if (distance_front<=30){
+      stop(mapped_speed);
+  state_car = "stop";
+  backward(mapped_speed);
+    state_car = "backward";
+ forward(mapped_speed);
+    state_car = "forward";
+}
+  if(distance_back <= 30){
   stop(mapped_speed);
   state_car = "stop";
+     forward(mapped_speed);
+    state_car = "forward";
+    backward(mapped_speed);
+    state_car = "backward";
+
 }
+  
 else{
   if(reverse == false){
-   forward(mapped_speed);
-     state_car = "forward";
+    forward(mapped_speed);
+    state_car = "forward";
   }
   else {
    backward(mapped_speed);
